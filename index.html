@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A 40-question interactive tour of TaxDome for teams behind the scenes.">
+<title>Follow the job: a tour of TaxDome</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------- tokens
+   White canvas, ink, one blue, one yellow (yellow is only ever a fill), true grays.
+   To use the licensed brand typeface, add an @font-face for "Suisse Intl": it is already first in the stack. */
+:root{
+  color-scheme:light dark;
+  --font:"Suisse Intl","Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --bg:#ffffff; --fg:#0e0e0e; --muted:#5c5c5c; --line:#d9d9d9; --soft:#f4f4f4;
+  --blue:#266de8; --blue-ink:#1b57c4; --blue-soft:#e9f0fd; --yellow:#ffe629;
+  --good:#11784a; --good-soft:#e6f5ed; --bad:#b8322b; --bad-soft:#fcecea; --part:#8a5a00; --part-soft:#fff6d6;
+  --focus:#266de8;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e0e0e; --fg:#f3f3f3; --muted:#a6a6a6; --line:#343434; --soft:#1a1a1a;
+    --blue-ink:#7ea5ff; --blue-soft:#15213b;
+    --good:#5ccb94; --good-soft:#11251b; --bad:#ff8a80; --bad-soft:#2b1513; --part:#f0c95a; --part-soft:#2a2410;
+    --focus:#7ea5ff;
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-999px;top:8px;background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:10}
+.skip:focus{left:8px}
+a{color:var(--blue-ink)}
+
+/* ---------------------------------------------------------------- header + pipeline rail */
+.top{max-width:1040px;margin:0 auto;padding:22px 24px 6px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand svg{display:block;height:32px;width:auto}
+.logo-dark{display:none}
+@media (prefers-color-scheme:dark){.logo-light{display:none}.logo-dark{display:block}}
+.hud{display:flex;align-items:center;gap:14px;font-size:15px;color:var(--muted)}
+.hud b{color:var(--fg);font-variant-numeric:tabular-nums}
+.streak{font-weight:600;color:var(--fg);background:var(--yellow);color:#0e0e0e;border-radius:999px;padding:2px 10px;font-size:13px}
+
+.rail{max-width:1040px;margin:14px auto 0;padding:0 24px}
+.stageline{display:none;margin:0 0 8px;font-size:15px;font-weight:600}
+.stages{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.slot{height:26px;display:flex;align-items:flex-end;margin-bottom:4px}
+.jobcard{width:100%;background:var(--yellow);color:#0e0e0e;font-weight:700;font-size:12px;line-height:1;padding:8px 8px;border-radius:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jobcard.arrive{animation:arrive .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes arrive{from{transform:translateX(-115%);opacity:0}to{transform:none;opacity:1}}
+.segs{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.seg{height:10px;border-radius:3px;background:var(--line);display:block}
+.seg.good{background:var(--blue)}
+.seg.part{background:linear-gradient(90deg,var(--blue) 50%,var(--line) 50%)}
+.seg.bad{background:repeating-linear-gradient(135deg,var(--fg) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px var(--fg)}
+.seg.now{background:transparent;box-shadow:inset 0 0 0 2px var(--fg)}
+.lab{display:block;margin-top:8px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab b{font-weight:700;margin-right:3px}
+.stage.current .lab{color:var(--fg);font-weight:600}
+.stage.done .lab{color:var(--fg)}
+
+/* ---------------------------------------------------------------- layout */
+main{outline:none;padding:0 24px 72px}
+.card{max-width:760px;margin:26px auto 0;padding:32px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg)}
+.page{max-width:760px;margin:0 auto}
+footer{max-width:1040px;margin:0 auto;padding:0 24px 40px;color:var(--muted);font-size:14px}
+
+/* ---------------------------------------------------------------- intro / results */
+.intro{max-width:700px;margin:40px auto 0}
+.intro h1{font-size:clamp(38px,7vw,64px);line-height:1.02;letter-spacing:-.03em;font-weight:700;margin:0 0 18px}
+.lede{font-size:clamp(18px,2.4vw,21px);line-height:1.45;margin:0 0 14px;max-width:34em}
+.intro p{max-width:36em}
+.muted{color:var(--muted)}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+.btn{font:inherit;font-weight:600;font-size:16px;border-radius:10px;padding:13px 22px;border:1.5px solid var(--fg);background:transparent;color:var(--fg);cursor:pointer;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#1f5fd0;border-color:#1f5fd0}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled:hover{background:transparent}
+.btn.primary:disabled:hover{background:var(--blue)}
+.btn.quiet{border-color:var(--line)}
+
+/* ---------------------------------------------------------------- question card */
+.qmeta{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:16px}
+.chip{font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--soft);border:1px solid var(--line)}
+.chip.challenge{background:var(--yellow);border-color:var(--yellow);color:#0e0e0e}
+.qcount{margin-left:auto;font-size:14px;color:var(--muted)}
+.qtext{font-size:clamp(21px,3.2vw,26px);line-height:1.3;font-weight:600;letter-spacing:-.012em;margin:0 0 22px;outline:none}
+.hint{font-size:14px;color:var(--muted);margin:0 0 12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+
+.opts{display:grid;gap:10px}
+.opt,.mitem{display:grid;grid-template-columns:30px minmax(0,1fr) 28px;gap:12px;align-items:start;width:100%;text-align:left;font:inherit;font-size:16.5px;line-height:1.4;color:var(--fg);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s}
+.opt:hover,.mitem:hover{border-color:var(--fg)}
+.card.is-locked .opt,.card.is-locked .mitem{cursor:default}
+.card.is-locked .opt:not(.right):not(.wrong):not(.missed):hover,.card.is-locked .mitem:not(.right):not(.wrong):hover{border-color:var(--line)}
+.key{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:7px;background:var(--soft);border:1px solid var(--line);font-size:13px;font-weight:700}
+.box{width:22px;height:22px;margin-top:2px;border:2px solid var(--fg);border-radius:6px;position:relative}
+.opt.on{border-color:var(--blue);background:var(--blue-soft)}
+.opt.on .box{background:var(--blue);border-color:var(--blue)}
+.opt.on .box::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.mark{display:grid;place-items:center;min-height:24px}
+.ico svg{display:block;width:20px;height:20px}
+.right{border-color:var(--good)!important;background:var(--good-soft)!important}
+.wrong{border-color:var(--bad)!important;background:var(--bad-soft)!important}
+.missed{border-color:var(--good)!important;border-style:dashed!important;background:transparent!important}
+.right .mark,.missed .mark{color:var(--good)}
+.wrong .mark{color:var(--bad)}
+.dim{opacity:.55}
+
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tfbtn{grid-template-columns:minmax(0,1fr) 26px 28px;align-items:center;padding:22px 18px;font-size:21px;font-weight:600}
+
+/* match + order */
+.match{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.mcol{display:grid;gap:10px;align-content:start}
+.mhead{font-size:14px;font-weight:600;color:var(--muted)}
+.badge{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-size:13px;font-weight:700;background:var(--soft);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.badge.slot:empty{border-style:dashed;background:transparent}
+.mitem.pend{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.mitem.paired{border-color:var(--blue);background:var(--blue-soft)}
+.mitem.paired .badge{background:var(--blue);border-color:var(--blue);color:#fff}
+.mitem.right .badge{background:var(--good);border-color:var(--good);color:#fff}
+.mitem.wrong .badge{background:var(--bad);border-color:var(--bad);color:#0e0e0e}
+.seq{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+div.mitem{cursor:default}
+div.mitem:hover{border-color:var(--line)}
+.note{grid-column:2 / 4;font-size:14px;color:var(--muted)}
+.badge.pop{animation:pop .18s ease-out}
+@keyframes pop{from{transform:scale(.6)}to{transform:none}}
+
+/* feedback */
+.fb{margin-top:20px;border-radius:12px;padding:18px 20px;border:1.5px solid;animation:rise .2s ease-out}
+@keyframes rise{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+.fb.good{background:var(--good-soft);border-color:var(--good)}
+.fb.part{background:var(--part-soft);border-color:var(--part)}
+.fb.bad{background:var(--bad-soft);border-color:var(--bad)}
+.fbhead{display:flex;align-items:center;gap:10px;font-size:18px}
+.fb.good .ico{color:var(--good)} .fb.part .ico{color:var(--part)} .fb.bad .ico{color:var(--bad)}
+.fbhead .pts{margin-left:auto;font-size:15px;font-weight:600;color:var(--muted);text-align:right}
+.why{margin:10px 0 0;line-height:1.6}
+.extra{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.extra h4{margin:0 0 6px;font-size:14px}
+.extra ul,.extra ol{margin:0;padding-left:20px}
+.extra li{margin:3px 0}
+
+/* stage recap + results */
+.recap .qtext{margin-bottom:12px}
+.status{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--muted)}
+.dots{display:grid;grid-template-columns:repeat(5,44px);gap:6px;margin:10px 0 8px}
+.take{margin:18px 0 0;padding:14px 16px;background:var(--soft);border-left:6px solid var(--yellow);border-radius:0 10px 10px 0;line-height:1.55}
+.results h1{font-size:clamp(30px,5.4vw,46px);line-height:1.08;letter-spacing:-.025em;margin:0 0 12px}
+.results h2,.study h2{font-size:22px;letter-spacing:-.01em;margin:44px 0 12px}
+.breakdown{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.breakdown li{display:grid;grid-template-columns:minmax(120px,190px) 1fr auto;gap:14px;align-items:center}
+.breakdown .segs{grid-template-columns:repeat(5,minmax(0,28px))}
+.flag{font-size:13px;font-weight:600;background:var(--yellow);color:#0e0e0e;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.remember{padding-left:0;list-style:none;display:grid;gap:14px;margin:0}
+.remember li{padding-left:16px;border-left:4px solid var(--line)}
+.remember b{display:block}
+.links{padding-left:20px}
+
+/* study sheet + review */
+.study .qa,.qa{padding:22px 0;border-top:1px solid var(--line)}
+.qa h3{font-size:19px;line-height:1.35;margin:0 0 10px;letter-spacing:-.005em}
+.qa .qn{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:4px}
+.ans{margin:0 0 6px}
+.anslabel{font-weight:700;font-size:14px;margin-right:6px}
+.ans ul,.ans ol{margin:6px 0 0;padding-left:22px}
+.stophead p{margin:0 0 6px}
+
+/* ---------------------------------------------------------------- small screens */
+@media (max-width:680px){
+  body{font-size:16px}
+  .top{padding:16px 16px 4px}
+  .rail{padding:0 16px}
+  .stageline{display:block}
+  .stages{gap:5px}
+  .lab{display:none}
+  .jobcard{font-size:0;padding:6px 0;border-radius:6px}
+  .slot{height:20px}
+  .segs{gap:2px}
+  .seg{height:8px}
+  main{padding:0 16px 56px}
+  .card{padding:20px;margin-top:18px}
+  .match{grid-template-columns:1fr}
+  .tf{gap:10px}
+  .tfbtn{padding:18px 12px;font-size:19px}
+  .breakdown li{grid-template-columns:1fr auto}
+  .breakdown .segs{grid-column:1 / 3;grid-row:2}
+  .dots{grid-template-columns:repeat(5,1fr)}
+}
+@media (hover:none){.kbd{display:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ---------------------------------------------------------------- print (study sheet as a handout) */
+@media print{
+  body{font-size:11pt;background:#fff;color:#000}
+  .top .hud,.rail,.btnrow,.actions,.noprint,footer,.skip{display:none!important}
+  .logo-light{display:block!important}.logo-dark{display:none!important}
+  main{padding:0}
+  .page,.card{max-width:none;border:none;padding:0;margin:0}
+  .qa{break-inside:avoid}
+  .study h2{break-after:avoid}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#app">Skip to the tour</a>
+
+<header class="top">
+  <div class="brand">
+    <span class="logo-light"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32" fill="none" role="img" aria-label="TaxDome">
+<title>TaxDome logotype v2.0 — on light</title>
+<path d="M10.5356 3.37849C11.3829 2.90571 12.4132 2.87566 13.2834 3.28941L13.4548 3.37849L15.1444 4.32389C15.4687 4.50548 15.5262 4.91904 15.3533 5.20702C15.1864 5.48465 14.8167 5.62805 14.5061 5.45511L12.7885 4.49918V4.49822C12.2924 4.22151 11.6808 4.22162 11.1845 4.49822L2.10366 9.58055C1.60913 9.85854 1.30614 10.3687 1.30456 10.9187V21.0814L1.31996 21.2854C1.38689 21.7565 1.67502 22.1779 2.1104 22.4195H2.11136L11.1922 27.5019C11.6886 27.7787 12.3 27.7787 12.7962 27.5019L21.8771 22.4195L22.0533 22.3056C22.4426 22.0144 22.675 21.5636 22.6762 21.0824V10.9187C22.6748 10.4376 22.4424 9.98688 22.0533 9.6955L21.8771 9.58055L21.1598 9.17922C20.8382 8.99902 20.7781 8.58995 20.947 8.30183C21.1128 8.0197 21.4858 7.87303 21.7991 8.048L22.5366 8.45987L22.7012 8.56045C23.5066 9.08438 23.9979 9.96591 24 10.9177V21.0824C24 22.0955 23.4459 23.031 22.5472 23.5402H22.5462L13.4653 28.6226H13.4644C12.5605 29.1259 11.4491 29.126 10.5453 28.6226L1.46341 23.5402C0.560342 23.0338 0.00167075 22.0978 1.89029e-07 21.0824V10.9187C-0.000373914 9.90528 0.554559 8.96976 1.45379 8.46083V8.45987L10.5356 3.37849ZM11.4811 14.6073H8.85655V19.6916H7.16399V14.6073H4.53947V13.0757H11.4811V14.6073ZM15.5324 13.0757C17.6291 13.0757 19.1514 14.4655 19.1515 16.3822C19.1515 18.2991 17.6292 19.6916 15.5324 19.6916H12.8434V13.0757H15.5324ZM14.5359 18.1887H15.5324V18.1849C16.6441 18.1848 17.3904 17.4692 17.3906 16.3918C17.3906 15.3141 16.6443 14.5902 15.5324 14.5901H14.5359V18.1887ZM18.1271 5.36315C18.9244 5.36341 19.5712 5.98965 19.5712 6.76257C19.5712 7.53545 18.9244 8.16173 18.1271 8.16198C17.3295 8.16198 16.683 7.53561 16.6829 6.76257C16.6829 5.9895 17.3295 5.36315 18.1271 5.36315Z" fill="#266DE8"></path>
+<path d="M88.0975 9.99988C91.8513 9.99988 94.5377 12.6691 94.5377 16.0003C94.5375 19.3313 91.8088 21.9997 88.0553 21.9999C84.3017 21.9999 81.6154 19.3314 81.6151 16.0003C81.6151 12.7024 84.3439 10.0001 88.0975 9.99988ZM120 12.4586H113.399V14.8118H119.136V17.0947H113.399V19.5332H120V21.8021H110.74V10.1862H120V12.4586ZM54.2883 21.8012H51.4946L50.3843 19.1983H45.2374L44.1271 21.8012H41.398L46.6059 10.1159H49.075L54.2883 21.8012ZM41.7881 12.5527H37.2339V21.7995H34.5506L34.5569 12.5527H30V10.1985H41.7881V12.5527ZM61.0577 13.96L63.6316 10.1985H66.671L62.5958 15.8658L66.8378 21.7995H63.7168L60.9859 17.8235L58.2407 21.7995H55.2004L59.4398 15.8992L55.3753 10.1985H58.5035L61.0577 13.96ZM73.4736 10.1985C77.2969 10.1987 79.9398 12.7015 79.9398 15.9994C79.9394 19.297 77.2967 21.7993 73.4736 21.7995H68.7293V10.1985H73.4736ZM102.509 15.094L105.705 10.1862H108.589V21.7924H105.931V14.2185L102.509 19.172H102.44L99.0506 14.28V21.7924H96.4265V10.1862H99.3116L102.509 15.094ZM88.0661 12.3531C85.9117 12.3531 84.417 13.9773 84.4169 15.9986C84.4171 18.0196 85.9466 19.6528 88.1011 19.6528C90.2553 19.6526 91.7492 18.0195 91.7494 15.9986C91.7493 14.0107 90.2204 12.3533 88.0661 12.3531ZM71.4055 19.4963H73.4736C75.6628 19.4963 77.1414 18.0861 77.1417 15.9986C77.1417 13.9108 75.6631 12.5008 73.4736 12.5008H71.4055V19.4963ZM46.1979 16.9435H49.4175L47.8077 13.1829L46.1979 16.9435Z" fill="#0E0E0E"></path>
+</svg></span>
+    <span class="logo-dark"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32" fill="none" role="img" aria-label="TaxDome">
+<title>TaxDome logotype v2.0 — on dark</title>
+<path d="M10.5356 3.37849C11.3829 2.90571 12.4132 2.87566 13.2834 3.28941L13.4548 3.37849L15.1444 4.32389C15.4687 4.50548 15.5262 4.91904 15.3533 5.20702C15.1864 5.48465 14.8167 5.62805 14.5061 5.45511L12.7885 4.49918V4.49822C12.2924 4.22151 11.6808 4.22162 11.1845 4.49822L2.10366 9.58055C1.60913 9.85854 1.30614 10.3687 1.30456 10.9187V21.0814L1.31996 21.2854C1.38689 21.7565 1.67502 22.1779 2.1104 22.4195H2.11136L11.1922 27.5019C11.6886 27.7787 12.3 27.7787 12.7962 27.5019L21.8771 22.4195L22.0533 22.3056C22.4426 22.0144 22.675 21.5636 22.6762 21.0824V10.9187C22.6748 10.4376 22.4424 9.98688 22.0533 9.6955L21.8771 9.58055L21.1598 9.17922C20.8382 8.99902 20.7781 8.58995 20.947 8.30183C21.1128 8.0197 21.4858 7.87303 21.7991 8.048L22.5366 8.45987L22.7012 8.56045C23.5066 9.08438 23.9979 9.96591 24 10.9177V21.0824C24 22.0955 23.4459 23.031 22.5472 23.5402H22.5462L13.4653 28.6226H13.4644C12.5605 29.1259 11.4491 29.126 10.5453 28.6226L1.46341 23.5402C0.560342 23.0338 0.00167075 22.0978 1.89029e-07 21.0824V10.9187C-0.000373914 9.90528 0.554559 8.96976 1.45379 8.46083V8.45987L10.5356 3.37849ZM11.4811 14.6073H8.85655V19.6916H7.16399V14.6073H4.53947V13.0757H11.4811V14.6073ZM15.5324 13.0757C17.6291 13.0757 19.1514 14.4655 19.1515 16.3822C19.1515 18.2991 17.6292 19.6916 15.5324 19.6916H12.8434V13.0757H15.5324ZM14.5359 18.1887H15.5324V18.1849C16.6441 18.1848 17.3904 17.4692 17.3906 16.3918C17.3906 15.3141 16.6443 14.5902 15.5324 14.5901H14.5359V18.1887ZM18.1271 5.36315C18.9244 5.36341 19.5712 5.98965 19.5712 6.76257C19.5712 7.53545 18.9244 8.16173 18.1271 8.16198C17.3295 8.16198 16.683 7.53561 16.6829 6.76257C16.6829 5.9895 17.3295 5.36315 18.1271 5.36315Z" fill="#FFFFFF"></path>
+<path d="M88.0975 9.99988C91.8513 9.99988 94.5377 12.6691 94.5377 16.0003C94.5375 19.3313 91.8088 21.9997 88.0553 21.9999C84.3017 21.9999 81.6154 19.3314 81.6151 16.0003C81.6151 12.7024 84.3439 10.0001 88.0975 9.99988ZM120 12.4586H113.399V14.8118H119.136V17.0947H113.399V19.5332H120V21.8021H110.74V10.1862H120V12.4586ZM54.2883 21.8012H51.4946L50.3843 19.1983H45.2374L44.1271 21.8012H41.398L46.6059 10.1159H49.075L54.2883 21.8012ZM41.7881 12.5527H37.2339V21.7995H34.5506L34.5569 12.5527H30V10.1985H41.7881V12.5527ZM61.0577 13.96L63.6316 10.1985H66.671L62.5958 15.8658L66.8378 21.7995H63.7168L60.9859 17.8235L58.2407 21.7995H55.2004L59.4398 15.8992L55.3753 10.1985H58.5035L61.0577 13.96ZM73.4736 10.1985C77.2969 10.1987 79.9398 12.7015 79.9398 15.9994C79.9394 19.297 77.2967 21.7993 73.4736 21.7995H68.7293V10.1985H73.4736ZM102.509 15.094L105.705 10.1862H108.589V21.7924H105.931V14.2185L102.509 19.172H102.44L99.0506 14.28V21.7924H96.4265V10.1862H99.3116L102.509 15.094ZM88.0661 12.3531C85.9117 12.3531 84.417 13.9773 84.4169 15.9986C84.4171 18.0196 85.9466 19.6528 88.1011 19.6528C90.2553 19.6526 91.7492 18.0195 91.7494 15.9986C91.7493 14.0107 90.2204 12.3533 88.0661 12.3531ZM71.4055 19.4963H73.4736C75.6628 19.4963 77.1414 18.0861 77.1417 15.9986C77.1417 13.9108 75.6631 12.5008 73.4736 12.5008H71.4055V19.4963ZM46.1979 16.9435H49.4175L47.8077 13.1829L46.1979 16.9435Z" fill="#FFFFFF"></path>
+</svg></span>
+  </div>
+  <div class="hud" id="hud" hidden>
+    <span id="streak" class="streak" hidden></span>
+    <span>Points <b id="pts">0</b></span>
+  </div>
+</header>
+
+<div class="rail" id="railwrap" role="group" aria-label="Tour progress">
+  <p class="stageline" id="stageline"></p>
+  <ol class="stages" id="stages"></ol>
+</div>
+
+<main id="app" tabindex="-1"><noscript><div class="card">This tour needs JavaScript. Please enable it and reload the page.</div></noscript></main>
+
+<footer>
+  <p>Built for internal learning. Facts reflect public taxdome.com information as of September 2026. Progress and scores stay in your browser and are never sent anywhere.</p>
+</footer>
+
+<script src="questions.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const app = document.getElementById('app');
+  const TOUR = window.TOUR;
+  if (!TOUR || !TOUR.questions) {
+    app.textContent = 'The questions failed to load. Make sure questions.js sits next to index.html.';
+    return;
+  }
+  const Q = TOUR.questions, S = TOUR.stops, N = Q.length;
+  const KEY = 'td-tour-' + (TOUR.version || 'v1');
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const maxOf = q => (q.type === 'match' || q.type === 'seq') ? 200 : 100;
+  const MAXBASE = Q.reduce((a, q) => a + maxOf(q), 0);
+
+  /* ------------------------------------------------------------ helpers */
+  function h(tag, props, ...kids) {
+    const e = document.createElement(tag);
+    if (props) for (const k in props) {
+      const v = props[k];
+      if (v == null || v === false) continue;
+      e.setAttribute(k, v === true ? '' : v);
+    }
+    kids.flat().forEach(c => { if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c)); });
+    return e;
+  }
+  function shuffle(arr, avoidSame) {
+    const a = arr.slice();
+    for (let tries = 0; tries < 8; tries++) {
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+      if (!avoidSame || a.length < 3 || a.some((v, i) => v !== arr[i])) break;
+    }
+    return a;
+  }
+  const fmt = n => n.toLocaleString('en-US');
+  const pick = (list, i) => list[i % list.length];
+  const ICON = {
+    check: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>',
+    cross: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+    dash:  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 10h10"/></svg>',
+    half:  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/></svg>'
+  };
+  function icon(name) { const s = h('span', { class: 'ico', 'aria-hidden': 'true' }); s.innerHTML = ICON[name]; return s; }
+  function mark(el, name, srText) { el.querySelector('.mark').replaceChildren(icon(name), h('span', { class: 'sr' }, srText)); }
+  const stopIdx = si => Q.map((q, i) => q.stop === si ? i : -1).filter(i => i >= 0);
+  const isLastInStop = i => i === N - 1 || Q[i + 1].stop !== Q[i].stop;
+
+  /* ------------------------------------------------------------ state */
+  const fresh = () => ({ phase: 'intro', i: 0, res: [], streak: 0, best: 0 });
+  let st = fresh();
+  let current = null;        // active question context (for keyboard shortcuts)
+  let lastStage = -1;        // for the job-card arrival animation
+  function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.res) && typeof s.i === 'number') return s; } catch (e) {} return null; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ phase: st.phase, i: st.i, res: st.res, streak: st.streak, best: st.best })); } catch (e) {} }
+  function wipe() { try { localStorage.removeItem(KEY); } catch (e) {} }
+  const offer = load();
+
+  function totals() {
+    let pts = 0, base = 0, bonus = 0, full = 0;
+    st.res.forEach(r => { if (!r) return; pts += r.base + r.bonus; base += r.base; bonus += r.bonus; if (r.status === 'good') full++; });
+    return { pts, base, bonus, full };
+  }
+
+  /* ------------------------------------------------------------ chrome: rail + hud */
+  function railStage() {
+    if (st.phase === 'intro' || st.phase === 'study') return 0;
+    if (st.phase === 'results' || st.phase === 'review') return S.length - 1;
+    return Q[st.i].stop;
+  }
+  function renderRail() {
+    const cur = railStage(), stages = document.getElementById('stages');
+    const done = st.phase === 'results' || st.phase === 'review';
+    stages.replaceChildren(...S.map((s, si) => {
+      const idx = stopIdx(si);
+      const answered = idx.filter(j => st.res[j]).length;
+      const complete = idx.every(j => st.res[j]);
+      const segs = h('div', { class: 'segs' }, idx.map(j => {
+        const r = st.res[j];
+        return h('span', { class: 'seg ' + (r ? r.status : (st.phase === 'q' && st.i === j ? 'now' : '')) });
+      }));
+      let card = null;
+      if (si === cur) {
+        card = h('div', { class: 'jobcard' + (lastStage !== cur ? ' arrive' : '') }, done ? 'Delivered' : 'Your job');
+      }
+      return h('li', { class: 'stage' + (si === cur ? ' current' : '') + (complete ? ' done' : ''), 'aria-label': `Stage ${si + 1}, ${s.name}: ${answered} of ${idx.length} answered` },
+        h('div', { class: 'slot' }, card), segs,
+        h('span', { class: 'lab' }, h('b', null, String(si + 1)), s.short));
+    }));
+    lastStage = cur;
+    document.getElementById('stageline').textContent = `Stage ${cur + 1} of ${S.length}: ${S[cur].name}`;
+  }
+  function renderHud() {
+    const hud = document.getElementById('hud');
+    const show = st.phase === 'q' || st.phase === 'recap';
+    hud.hidden = !show;
+    document.getElementById('pts').textContent = fmt(totals().pts);
+    const sk = document.getElementById('streak');
+    sk.hidden = st.streak < 2; sk.textContent = `Streak ${st.streak}`;
+  }
+  function setView(node, focusEl) {
+    app.replaceChildren(node);
+    try { window.scrollTo(0, 0); } catch (e) {}
+    if (focusEl) focusEl.focus({ preventScroll: true });
+  }
+
+  /* ------------------------------------------------------------ intro */
+  function showIntro() {
+    st.phase = 'intro'; current = null;
+    const inProgress = offer && (offer.phase === 'q' || offer.phase === 'recap') && offer.res.some(Boolean);
+    const finished = offer && offer.phase === 'results';
+    const answeredCount = offer ? offer.res.filter(Boolean).length : 0;
+    const title = h('h1', { tabindex: '-1' }, 'Follow the job');
+    const btns = h('div', { class: 'btnrow' });
+    const go = (label, fn, cls) => { const b = h('button', { type: 'button', class: 'btn ' + (cls || '') }, label); b.addEventListener('click', fn); btns.append(b); return b; };
+    if (inProgress) {
+      go(`Resume (${answeredCount} of ${N} answered)`, resume, 'primary');
+      go('Start over', startNew);
+    } else if (finished) {
+      go('See my last results', resume, 'primary');
+      go('Take the tour again', startNew);
+    } else {
+      go('Start the tour', startNew, 'primary');
+    }
+    go('Study sheet', () => showStudy('intro'), 'quiet');
+    const view = h('section', { class: 'intro' },
+      title,
+      h('p', { class: 'lede' }, 'A 40-question tour of TaxDome for everyone who builds, supports and grows it behind the scenes.'),
+      h('p', null, 'In TaxDome, a client’s work is a job that moves through the stages of a pipeline. Here, that job is you. Answer the questions in each of the eight stages to move forward, and along the way you’ll see how TaxDome helps accounting firms and why each answer is right.'),
+      h('p', null, 'The last question in every stage is a stage challenge (matching or ordering) worth double points.'),
+      h('p', { class: 'muted' }, 'This is a tour, not an exam. There’s no timer, it takes about 20 minutes, and your progress saves on this device. Nobody sees your score unless you share it.'),
+      btns);
+    setView(view, title);
+    renderRail(); renderHud();
+  }
+  function startNew() { wipe(); st = fresh(); lastStage = -1; showQuestion(); }
+  function resume() {
+    st = Object.assign(fresh(), offer);
+    if (st.phase === 'results') return showResults();
+    if (st.phase === 'recap') return showRecap();
+    if (st.res[st.i]) return goNext();
+    showQuestion();
+  }
+
+  /* ------------------------------------------------------------ question flow */
+  function goNext() {
+    if (isLastInStop(st.i)) showRecap(); else { st.i++; showQuestion(); }
+  }
+  function showQuestion() {
+    st.phase = 'q'; save();
+    const q = Q[st.i];
+    const ctx = { locked: false, keyHandler: null };
+    current = ctx;
+    const label = { mc: 'Pick one', tf: 'True or false', ms: 'Select all that apply', match: 'Match the pairs', seq: 'Put in order' }[q.type];
+    const challenge = q.type === 'match' || q.type === 'seq';
+    const title = h('h2', { class: 'qtext', id: 'qtext', tabindex: '-1' }, q.q);
+    const body = h('div', { class: 'qbody' });
+    const actions = h('div', { class: 'actions' });
+    const fbwrap = h('div', { class: 'fbwrap', role: 'status', 'aria-live': 'polite' });
+    const card = h('section', { class: 'card qcard', 'aria-labelledby': 'qtext' },
+      h('div', { class: 'qmeta' },
+        h('span', { class: 'chip' }, label),
+        challenge ? h('span', { class: 'chip challenge' }, 'Stage challenge: double points') : null,
+        h('span', { class: 'qcount' }, `Question ${st.i + 1} of ${N}`)),
+      title, body, actions, fbwrap);
+    const done = o => finish(q, ctx, card, actions, fbwrap, o);
+    ({ mc: buildMC, tf: buildTF, ms: buildMS, match: buildMatch, seq: buildSeq })[q.type](q, body, actions, ctx, done);
+    setView(card, title);
+    renderRail(); renderHud();
+  }
+
+  const OK = ['Reconciled.', 'Balanced.', 'That one posts.', 'Books closed on that one.', 'Right on the ledger.', 'Audit-proof.'];
+  const BAD = ['Out of balance. Here’s the fix.', 'Doesn’t reconcile. Here’s why.', 'Not quite. Here’s the entry.'];
+  function finish(q, ctx, card, actions, fbwrap, o) {
+    ctx.locked = true; card.classList.add('is-locked');
+    let bonus = 0;
+    if (o.full) { st.streak++; st.best = Math.max(st.best, st.streak); bonus = Math.min(st.streak - 1, 5) * 10; }
+    else st.streak = 0;
+    const status = o.full ? 'good' : (o.base > 0 ? 'part' : 'bad');
+    st.res[st.i] = { status, base: o.base, bonus };
+    save(); renderRail(); renderHud();
+    const msg = status === 'good' ? pick(OK, st.i) : status === 'part' ? 'Partly posted. Here’s the full entry.' : pick(BAD, st.i);
+    fbwrap.replaceChildren(h('div', { class: 'fb ' + status },
+      h('div', { class: 'fbhead' }, icon(status === 'good' ? 'check' : status === 'part' ? 'half' : 'cross'),
+        h('strong', null, msg),
+        h('span', { class: 'pts' }, `+${o.base + bonus}` + (bonus ? ` (${bonus} streak bonus)` : ''))),
+      h('p', { class: 'why' }, q.why),
+      o.extra || null));
+    actions.replaceChildren();
+    const next = h('button', { type: 'button', class: 'btn primary', id: 'next' }, isLastInStop(st.i) ? 'Finish stage' : 'Next question');
+    next.addEventListener('click', goNext);
+    actions.append(next);
+    next.focus({ preventScroll: true });
+    if (typeof fbwrap.scrollIntoView === 'function') fbwrap.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+
+  /* ------------------------------------------------------------ builders */
+  function buildMC(q, body, actions, ctx, done) {
+    const order = shuffle(q.options.map((_, i) => i));
+    const group = h('div', { class: 'opts', role: 'radiogroup', 'aria-labelledby': 'qtext' });
+    const btns = order.map((oi, pos) => {
+      const b = h('button', { type: 'button', class: 'opt', role: 'radio', 'aria-checked': 'false', 'data-i': oi },
+        h('span', { class: 'key', 'aria-hidden': 'true' }, String(pos + 1)), h('span', { class: 'txt' }, q.options[oi]), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => choose(oi));
+      return b;
+    });
+    group.append(...btns); body.append(group);
+    body.append(h('p', { class: 'hint kbd' }, 'Tip: press 1 to ' + order.length + ' to answer.'));
+    function choose(oi) {
+      if (ctx.locked) return; ctx.locked = true;
+      btns.forEach(b => {
+        const i = +b.dataset.i;
+        b.setAttribute('aria-checked', String(i === oi));
+        if (i === q.answer) { b.classList.add('right'); mark(b, 'check', 'Correct answer'); }
+        else if (i === oi) { b.classList.add('wrong'); mark(b, 'cross', 'Your answer, incorrect'); }
+        else b.classList.add('dim');
+      });
+      done({ full: oi === q.answer, base: oi === q.answer ? 100 : 0 });
+    }
+    ctx.keyHandler = k => { const n = parseInt(k, 10); if (n >= 1 && n <= order.length) choose(order[n - 1]); };
+  }
+
+  function buildTF(q, body, actions, ctx, done) {
+    const group = h('div', { class: 'tf', role: 'radiogroup', 'aria-labelledby': 'qtext' });
+    const mk = (val, label, key) => {
+      const b = h('button', { type: 'button', class: 'opt tfbtn', role: 'radio', 'aria-checked': 'false', 'data-v': String(val) },
+        h('span', null, label), h('span', { class: 'key', 'aria-hidden': 'true' }, key), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => choose(val));
+      return b;
+    };
+    const bt = mk(true, 'True', 'T'), bf = mk(false, 'False', 'F');
+    group.append(bt, bf); body.append(group);
+    body.append(h('p', { class: 'hint kbd', style: 'margin-top:12px' }, 'Tip: press T or F.'));
+    function choose(val) {
+      if (ctx.locked) return; ctx.locked = true;
+      [bt, bf].forEach(b => {
+        const v = b.dataset.v === 'true';
+        b.setAttribute('aria-checked', String(v === val));
+        if (v === q.answer) { b.classList.add('right'); mark(b, 'check', 'Correct answer'); }
+        else if (v === val) { b.classList.add('wrong'); mark(b, 'cross', 'Your answer, incorrect'); }
+        else b.classList.add('dim');
+      });
+      done({ full: val === q.answer, base: val === q.answer ? 100 : 0 });
+    }
+    ctx.keyHandler = k => { if (k === 't' || k === '1') choose(true); else if (k === 'f' || k === '2') choose(false); };
+  }
+
+  function buildMS(q, body, actions, ctx, done) {
+    const order = shuffle(q.options.map((_, i) => i));
+    const sel = new Set();
+    body.append(h('p', { class: 'hint' }, 'Choose every option that applies, then check your answer.'));
+    const group = h('div', { class: 'opts', role: 'group', 'aria-labelledby': 'qtext' });
+    const btns = order.map(oi => {
+      const b = h('button', { type: 'button', class: 'opt', role: 'checkbox', 'aria-checked': 'false', 'data-i': oi },
+        h('span', { class: 'box', 'aria-hidden': 'true' }), h('span', { class: 'txt' }, q.options[oi]), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => toggle(oi, b));
+      return b;
+    });
+    group.append(...btns); body.append(group);
+    const check = h('button', { type: 'button', class: 'btn primary', disabled: true }, 'Check answer');
+    actions.append(check);
+    function toggle(oi, b) {
+      if (ctx.locked) return;
+      sel.has(oi) ? sel.delete(oi) : sel.add(oi);
+      b.classList.toggle('on', sel.has(oi)); b.setAttribute('aria-checked', String(sel.has(oi)));
+      check.disabled = sel.size === 0;
+    }
+    check.addEventListener('click', submit);
+    function submit() {
+      if (ctx.locked || !sel.size) return; ctx.locked = true;
+      const correct = new Set(q.answer); let right = 0, wrong = 0;
+      btns.forEach(b => {
+        const i = +b.dataset.i, isC = correct.has(i), isS = sel.has(i);
+        if (isC && isS) { right++; b.classList.add('right'); mark(b, 'check', 'Correct, and you selected it'); }
+        else if (isC) { b.classList.add('missed'); mark(b, 'dash', 'Correct answer you missed'); }
+        else if (isS) { wrong++; b.classList.add('wrong'); mark(b, 'cross', 'Incorrect, and you selected it'); }
+        else b.classList.add('dim');
+      });
+      done({ full: right === correct.size && wrong === 0, base: Math.round(100 * Math.max(0, right - wrong) / correct.size) });
+    }
+    ctx.keyHandler = k => { const n = parseInt(k, 10); if (n >= 1 && n <= order.length) toggle(order[n - 1], btns[n - 1]); };
+  }
+
+  function buildMatch(q, body, actions, ctx, done) {
+    const n = q.pairs.length;
+    const rOrder = shuffle([...Array(n).keys()], true);
+    const pairL = Array(n).fill(null), pairR = Array(n).fill(null);
+    let pend = null;
+    const hint = h('p', { class: 'hint', 'aria-live': 'polite' });
+    const lb = q.pairs.map((p, l) => {
+      const b = h('button', { type: 'button', class: 'mitem', 'data-l': l },
+        h('span', { class: 'badge', 'aria-hidden': 'true' }, String(l + 1)), h('span', { class: 'txt' }, p[0]), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => clickL(l)); return b;
+    });
+    const rbBy = {};
+    const rb = rOrder.map(r => {
+      const b = h('button', { type: 'button', class: 'mitem', 'data-r': r },
+        h('span', { class: 'badge slot', 'aria-hidden': 'true' }), h('span', { class: 'txt' }, q.pairs[r][1]), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => clickR(r)); rbBy[r] = b; return b;
+    });
+    body.append(hint, h('div', { class: 'match' },
+      h('div', { class: 'mcol' }, h('div', { class: 'mhead' }, q.leftLabel || 'Item'), lb),
+      h('div', { class: 'mcol' }, h('div', { class: 'mhead' }, q.rightLabel || 'Match'), rb)));
+    const check = h('button', { type: 'button', class: 'btn primary', disabled: true }, 'Check answer');
+    const reset = h('button', { type: 'button', class: 'btn quiet' }, 'Clear pairs');
+    actions.append(check, reset);
+    function clickL(l) {
+      if (ctx.locked) return;
+      if (pairL[l] !== null) { pairR[pairL[l]] = null; pairL[l] = null; pend = null; }
+      else if (pend && pend.side === 'r') { pairL[l] = pend.i; pairR[pend.i] = l; pend = null; popBadge(pairL[l]); }
+      else pend = (pend && pend.side === 'l' && pend.i === l) ? null : { side: 'l', i: l };
+      update();
+    }
+    function clickR(r) {
+      if (ctx.locked) return;
+      if (pairR[r] !== null) { pairL[pairR[r]] = null; pairR[r] = null; pend = null; }
+      else if (pend && pend.side === 'l') { pairR[r] = pend.i; pairL[pend.i] = r; pend = null; popBadge(r); }
+      else pend = (pend && pend.side === 'r' && pend.i === r) ? null : { side: 'r', i: r };
+      update();
+    }
+    function popBadge(r) { const bd = rbBy[r].querySelector('.badge'); requestAnimationFrame(() => { bd.classList.remove('pop'); void bd.offsetWidth; bd.classList.add('pop'); }); }
+    function update() {
+      lb.forEach((b, l) => { b.classList.toggle('paired', pairL[l] !== null); b.classList.toggle('pend', !!pend && pend.side === 'l' && pend.i === l); });
+      Object.keys(rbBy).forEach(r => {
+        const b = rbBy[r], l = pairR[r];
+        b.querySelector('.badge').textContent = l === null ? '' : String(l + 1);
+        b.classList.toggle('paired', l !== null); b.classList.toggle('pend', !!pend && pend.side === 'r' && pend.i === +r);
+        b.setAttribute('aria-label', q.pairs[r][1] + (l === null ? '' : `. Paired with ${q.pairs[l][0]}`));
+      });
+      const left = pairL.filter(x => x === null).length;
+      check.disabled = left > 0;
+      hint.textContent = pend ? (pend.side === 'l' ? `Now pick the match for “${q.pairs[pend.i][0]}”.` : 'Now pick the item it matches on the left.')
+        : left === 0 ? 'All paired. Check your answer, or tap a pair to undo it.'
+        : 'Tap an item on the left, then tap its match on the right.';
+    }
+    reset.addEventListener('click', () => { if (ctx.locked) return; pairL.fill(null); pairR.fill(null); pend = null; update(); });
+    check.addEventListener('click', submit);
+    function submit() {
+      if (ctx.locked || pairL.some(x => x === null)) return; ctx.locked = true;
+      let right = 0;
+      lb.forEach((b, l) => { const ok = pairL[l] === l; if (ok) right++; b.classList.remove('paired', 'pend'); b.classList.add(ok ? 'right' : 'wrong'); mark(b, ok ? 'check' : 'cross', ok ? 'Matched correctly' : 'Matched incorrectly'); });
+      Object.keys(rbBy).forEach(r => { const b = rbBy[r], ok = pairR[r] === +r; b.classList.remove('paired', 'pend'); b.classList.add(ok ? 'right' : 'wrong'); mark(b, ok ? 'check' : 'cross', ok ? 'Matched correctly' : 'Matched incorrectly'); });
+      hint.textContent = '';
+      const full = right === n;
+      done({ full, base: Math.round(200 * right / n),
+        extra: full ? null : h('div', { class: 'extra' }, h('h4', null, 'The right pairs'),
+          h('ul', null, q.pairs.map(p => h('li', null, h('b', null, p[0]), ' matches ', p[1])))) });
+    }
+    ctx.keyHandler = null;
+    update();
+  }
+
+  function buildSeq(q, body, actions, ctx, done) {
+    const n = q.steps.length;
+    const picks = [];
+    const disp = shuffle([...Array(n).keys()], true);
+    const hint = h('p', { class: 'hint', 'aria-live': 'polite' });
+    const list = h('ol', { class: 'seq', 'aria-labelledby': 'qtext' });
+    const bys = {};
+    disp.forEach((si, pos) => {
+      const b = h('button', { type: 'button', class: 'mitem', 'data-s': si },
+        h('span', { class: 'badge slot', 'aria-hidden': 'true' }), h('span', { class: 'txt' }, q.steps[si]), h('span', { class: 'mark' }));
+      b.addEventListener('click', () => tap(si)); bys[si] = b; list.append(h('li', null, b));
+    });
+    body.append(hint, list);
+    const check = h('button', { type: 'button', class: 'btn primary', disabled: true }, 'Check answer');
+    const reset = h('button', { type: 'button', class: 'btn quiet' }, 'Clear order');
+    actions.append(check, reset);
+    function tap(si) {
+      if (ctx.locked) return;
+      const k = picks.indexOf(si);
+      if (k > -1) picks.splice(k, 1); else picks.push(si);
+      update();
+      if (k === -1) { const bd = bys[si].querySelector('.badge'); requestAnimationFrame(() => { bd.classList.remove('pop'); void bd.offsetWidth; bd.classList.add('pop'); }); }
+    }
+    function update() {
+      disp.forEach(si => {
+        const k = picks.indexOf(si), b = bys[si];
+        b.querySelector('.badge').textContent = k > -1 ? String(k + 1) : '';
+        b.classList.toggle('paired', k > -1);
+        b.setAttribute('aria-label', q.steps[si] + (k > -1 ? `. Placed number ${k + 1}` : ''));
+      });
+      check.disabled = picks.length !== n;
+      hint.textContent = picks.length === n ? 'All placed. Check your answer, or tap a step to take it out.'
+        : `Tap the steps in the order they happen. ${picks.length} of ${n} placed.`;
+    }
+    reset.addEventListener('click', () => { if (ctx.locked) return; picks.length = 0; update(); });
+    check.addEventListener('click', submit);
+    function submit() {
+      if (ctx.locked || picks.length !== n) return; ctx.locked = true;
+      let right = 0;
+      const items = q.steps.map((txt, si) => {
+        const k = picks.indexOf(si), ok = k === si; if (ok) right++;
+        const box = h('div', { class: 'mitem ' + (ok ? 'right' : 'wrong') },
+          h('span', { class: 'badge', 'aria-hidden': 'true' }, String(si + 1)), h('span', { class: 'txt' }, txt), h('span', { class: 'mark' }));
+        mark(box, ok ? 'check' : 'cross', ok ? 'Placed correctly' : `Placed incorrectly, you put it at number ${k + 1}`);
+        if (!ok) box.append(h('span', { class: 'note' }, `You put this at number ${k + 1}.`));
+        return h('li', null, box);
+      });
+      list.replaceChildren(...items);
+      hint.textContent = 'The correct order:';
+      done({ full: right === n, base: Math.round(200 * right / n) });
+    }
+    ctx.keyHandler = k => { const num = parseInt(k, 10); if (num >= 1 && num <= n) tap(disp[num - 1]); };
+    update();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!current || current.locked || !current.keyHandler) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    current.keyHandler(String(e.key).toLowerCase());
+  });
+
+  /* ------------------------------------------------------------ stage recap */
+  function showRecap() {
+    st.phase = 'recap'; current = null; save();
+    const si = Q[st.i].stop, idx = stopIdx(si);
+    const rs = idx.map(j => st.res[j]);
+    const good = rs.filter(r => r && r.status === 'good').length;
+    const pts = rs.reduce((a, r) => a + (r ? r.base + r.bonus : 0), 0);
+    const last = si === S.length - 1;
+    const title = h('h2', { class: 'qtext', id: 'rtitle', tabindex: '-1' }, S[si].name);
+    const go = h('button', { type: 'button', class: 'btn primary' }, last ? 'See my results' : `Automove to stage ${si + 2}: ${S[si + 1].name}`);
+    go.addEventListener('click', () => { if (last) showResults(); else { st.i++; showQuestion(); } });
+    const card = h('section', { class: 'card recap', 'aria-labelledby': 'rtitle' },
+      h('p', { class: 'status' }, `Stage ${si + 1} of ${S.length} complete`),
+      title,
+      h('div', { class: 'dots segs', role: 'img', 'aria-label': `${good} of ${idx.length} fully right` }, rs.map(r => h('span', { class: 'seg ' + (r ? r.status : '') }))),
+      h('p', { class: 'muted', style: 'margin:6px 0 0' }, `${good} of ${idx.length} fully right, ${fmt(pts)} points in this stage.`),
+      h('p', { class: 'take' }, h('strong', null, 'Remember this: '), S[si].takeaway),
+      h('div', { class: 'actions' }, go));
+    setView(card, title);
+    renderRail(); renderHud();
+    go.focus({ preventScroll: true });
+  }
+
+  /* ------------------------------------------------------------ results */
+  const RANKS = [
+    { min: .97, title: 'Managing partner', line: 'You could run this firm. Time to teach the tour to a teammate.' },
+    { min: .90, title: 'Partner', line: 'You can explain how TaxDome creates value for firms and their clients.' },
+    { min: .80, title: 'Manager', line: 'A solid grasp of the platform and why firms choose it.' },
+    { min: .65, title: 'Senior associate', line: 'You have the big picture. A few stages deserve a second look.' },
+    { min: .50, title: 'Associate', line: 'A good foundation. Review the missed questions to level up.' },
+    { min: 0, title: 'Intern', line: 'Everyone starts somewhere. The study sheet explains every answer.' }
+  ];
+  function showResults() {
+    st.phase = 'results'; current = null; save();
+    const t = totals(), pct = t.base / MAXBASE;
+    const rank = RANKS.find(r => pct >= r.min);
+    const missed = Q.map((q, i) => i).filter(i => !st.res[i] || st.res[i].status !== 'good');
+    const title = h('h1', { tabindex: '-1' }, `You answered ${t.full} of ${N} fully right.`);
+    const rows = S.map((s, si) => {
+      const idx = stopIdx(si), g = idx.filter(j => st.res[j] && st.res[j].status === 'good').length;
+      return h('li', null,
+        h('span', null, h('b', null, `${si + 1}. `), s.name),
+        h('span', { class: 'segs', role: 'img', 'aria-label': `${g} of ${idx.length} fully right` }, idx.map(j => h('span', { class: 'seg ' + (st.res[j] ? st.res[j].status : '') }))),
+        g <= 3 ? h('span', { class: 'flag' }, 'Worth a second look') : h('span', { class: 'muted' }, `${g}/${idx.length}`));
+    });
+    const shareText = `I finished the TaxDome tour: ${t.full}/${N} fully right, rank ${rank.title}. ${location.href.split('#')[0]}`;
+    const btns = h('div', { class: 'btnrow' });
+    const add = (label, fn, cls) => { const b = h('button', { type: 'button', class: 'btn ' + (cls || '') }, label); b.addEventListener('click', () => fn(b)); btns.append(b); };
+    if (missed.length) add(`Review ${missed.length} to revisit`, () => showReview(missed), 'primary');
+    add('Study sheet', () => showStudy('results'), missed.length ? '' : 'primary');
+    add('Copy my result', b => copyText(shareText, b));
+    add('Take the tour again', startNew, 'quiet');
+    const view = h('section', { class: 'page results' },
+      h('p', { class: 'status', style: 'margin-top:40px' }, 'Tour complete. Your job was delivered.'),
+      title,
+      h('p', { class: 'lede' }, h('strong', null, `Your rank: ${rank.title}. `), rank.line),
+      h('p', { class: 'muted' }, `${fmt(t.pts)} points` + (t.bonus ? `, including ${t.bonus} from streaks` : '') + (st.best > 1 ? `. Longest streak: ${st.best}.` : '.')),
+      btns,
+      h('h2', null, 'How each stage went'),
+      h('ul', { class: 'breakdown' }, rows),
+      h('h2', null, 'What to remember'),
+      h('ol', { class: 'remember' }, S.map(s => h('li', null, h('b', null, s.name), s.takeaway))),
+      h('h2', null, 'Keep exploring'),
+      h('ul', { class: 'links' }, (TOUR.links || []).map(l => h('li', null, h('a', { href: l.url, target: '_blank', rel: 'noopener' }, l.label)))));
+    setView(view, title);
+    renderRail(); renderHud();
+  }
+  function copyText(text, btn) {
+    const old = btn.textContent;
+    const ok = () => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = old; }, 1800); };
+    const fallback = () => {
+      const ta = h('textarea', { 'aria-hidden': 'true' }); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.append(ta); ta.select();
+      try { document.execCommand('copy') ? ok() : window.prompt('Copy your result:', text); } catch (e) { window.prompt('Copy your result:', text); }
+      ta.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback();
+  }
+
+  /* ------------------------------------------------------------ answer key: study sheet + review */
+  function answerNode(q) {
+    if (q.type === 'mc') return h('span', null, q.options[q.answer]);
+    if (q.type === 'tf') return h('span', null, q.answer ? 'True' : 'False');
+    if (q.type === 'ms') return h('ul', null, q.answer.map(i => h('li', null, q.options[i])));
+    if (q.type === 'match') return h('ul', null, q.pairs.map(p => h('li', null, h('b', null, p[0]), ' matches ', p[1])));
+    return h('ol', null, q.steps.map(s => h('li', null, s)));
+  }
+  function qa(i) {
+    const q = Q[i];
+    return h('article', { class: 'qa' },
+      h('h3', null, h('span', { class: 'qn' }, `${i + 1}.`), q.q),
+      h('div', { class: 'ans' }, h('span', { class: 'anslabel' }, q.type === 'match' ? 'Pairs:' : q.type === 'seq' ? 'Order:' : 'Answer:'), answerNode(q)),
+      h('p', { class: 'why' }, q.why));
+  }
+  function backButton(label, fn) { const b = h('button', { type: 'button', class: 'btn quiet noprint' }, label); b.addEventListener('click', fn); return b; }
+  function showStudy(from) {
+    const prevPhase = st.phase; st.phase = 'study'; current = null;
+    const back = () => { if (from === 'results') { st.phase = 'results'; showResults(); } else { st.phase = 'intro'; showIntro(); } };
+    const printBtn = h('button', { type: 'button', class: 'btn noprint' }, 'Print or save as PDF');
+    printBtn.addEventListener('click', () => window.print());
+    const title = h('h1', { tabindex: '-1', style: 'font-size:clamp(30px,5vw,42px);letter-spacing:-.025em;margin:40px 0 10px' }, 'Study sheet');
+    const view = h('section', { class: 'page study' },
+      title,
+      h('p', { class: 'lede muted' }, 'All 40 questions with their answers and explanations, grouped by stage. Handy for trainers debriefing a group or anyone revising before a retake.'),
+      h('div', { class: 'btnrow noprint' }, backButton('Back', back), printBtn),
+      S.map((s, si) => h('div', null,
+        h('h2', null, `${si + 1}. ${s.name}`),
+        h('div', { class: 'stophead' }, h('p', { class: 'muted' }, s.intro)),
+        stopIdx(si).map(qa))));
+    setView(view, title);
+    renderRail(); renderHud();
+  }
+  function showReview(list) {
+    st.phase = 'review'; current = null;
+    const title = h('h1', { tabindex: '-1', style: 'font-size:clamp(30px,5vw,42px);letter-spacing:-.025em;margin:40px 0 10px' }, 'Questions to revisit');
+    const view = h('section', { class: 'page study' },
+      title,
+      h('p', { class: 'lede muted' }, `${list.length} question${list.length === 1 ? '' : 's'} weren’t fully right. Read the answers and explanations, then take the tour again if you like.`),
+      h('div', { class: 'btnrow' }, backButton('Back to results', () => { st.phase = 'results'; showResults(); })),
+      list.map(qa));
+    setView(view, title);
+    renderRail(); renderHud();
+  }
+
+  /* ------------------------------------------------------------ go */
+  showIntro();
+})();
+</script>
+</body>
+</html>
